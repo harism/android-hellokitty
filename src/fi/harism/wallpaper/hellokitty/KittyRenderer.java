@@ -1,3 +1,19 @@
+/*
+   Copyright 2012 Harri Smatt
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
+
 package fi.harism.wallpaper.hellokitty;
 
 import java.io.ByteArrayOutputStream;
@@ -15,6 +31,9 @@ import android.os.Handler;
 import android.os.SystemClock;
 import android.widget.Toast;
 
+/**
+ * Renderer class.
+ */
 public class KittyRenderer implements GLSurfaceView.Renderer {
 
 	private static final int SPLINE_VERTEX_COUNT = 20;
@@ -30,13 +49,18 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	private final KittyShader mShaderCopy = new KittyShader();
 	private int mWidth, mHeight;
 
+	/**
+	 * Default constructor.
+	 */
 	public KittyRenderer(GLSurfaceView glSurfaceView) {
 		mGLSurfaceView = glSurfaceView;
 
+		// Screen sized coordinates.
 		final byte SCREEN_COORDS[] = { -1, 1, -1, -1, 1, 1, 1, -1 };
 		mBufferScreen = ByteBuffer.allocateDirect(2 * 4);
 		mBufferScreen.put(SCREEN_COORDS).position(0);
 
+		// Spline float buffer generation.
 		ByteBuffer buf = ByteBuffer.allocateDirect(4 * 4 * SPLINE_VERTEX_COUNT);
 		mBufferSpline = buf.order(ByteOrder.nativeOrder()).asFloatBuffer();
 		for (int i = 0; i < SPLINE_VERTEX_COUNT; ++i) {
@@ -65,6 +89,7 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	@Override
 	public void onDrawFrame(GL10 unused) {
 
+		// If shader compiler is not supported.
 		if (mShaderCompilerSupport[0] == false) {
 			GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
 			GLES20.glViewport(0, 0, mWidth, mHeight);
@@ -73,21 +98,23 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 			return;
 		}
 
+		// Default settings.
 		GLES20.glDisable(GLES20.GL_BLEND);
 		GLES20.glDisable(GLES20.GL_DEPTH_TEST);
 		GLES20.glDisable(GLES20.GL_CULL_FACE);
 
+		// Render to FBO.
 		renderKitty();
 
+		// Bind screen buffer.
 		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
 		GLES20.glViewport(0, 0, mWidth, mHeight);
-
+		// Copy FBO to screen.
 		mShaderCopy.useProgram();
 		int aPosition = mShaderCopy.getHandle("aPosition");
 		GLES20.glVertexAttribPointer(aPosition, 2, GLES20.GL_BYTE, false, 0,
 				mBufferScreen);
 		GLES20.glEnableVertexAttribArray(aPosition);
-
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
@@ -117,6 +144,7 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 			return;
 		}
 
+		// Try to load shaders.
 		try {
 			String vertexSource, fragmentSource;
 			vertexSource = loadRawString(R.raw.copy_vs);
@@ -126,10 +154,15 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 			fragmentSource = loadRawString(R.raw.bezier_fs);
 			mShaderBezier.setProgram(vertexSource, fragmentSource);
 		} catch (Exception ex) {
+			mShaderCompilerSupport[0] = false;
 			showError(ex.getMessage());
 		}
 	}
 
+	/**
+	 * Renders bezier fill onto current buffer. tStart and tEnd are values
+	 * between [0, 1].
+	 */
 	private void renderBezier(KittyBezier bezier, float tStart, float tEnd) {
 		int sz = bezier.mCtrlPts0.length;
 		final float[] ctrlPts = new float[16];
@@ -175,15 +208,13 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 				mBufferSpline);
 		GLES20.glEnableVertexAttribArray(aSplinePos);
 
-		GLES20.glEnable(GLES20.GL_BLEND);
-		GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
 				2 * SPLINE_VERTEX_COUNT);
-
-		GLES20.glDisable(GLES20.GL_BLEND);
 	}
 
+	/**
+	 * 
+	 */
 	private void renderKitty() {
 		mKittyFbo.bind();
 		mKittyFbo.bindTexture(0);

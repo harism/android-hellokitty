@@ -1,20 +1,45 @@
+/*
+   Copyright 2012 Harri Smatt
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
+
 package fi.harism.wallpaper.hellokitty;
 
 import java.util.Vector;
 
+/**
+ * Kitty object, container for bezier fills.
+ */
 public class KittyObject {
 
+	// Default colors.
 	private static final float[] COLOR_GRAY = { 0.376f, 0.376f, 0.377f };
 	private static final float[] COLOR_PINK = { 0.906f, 0.314f, 0.584f };
 	private static final float[] COLOR_WHITE = { 1f, 1f, 1f };
 	private static final float[] COLOR_YELLOW = { 1f, 0.792f, 0.043f };
 
+	// Modifier constants.
 	private static final float ROTATE_NONE = 0f;
 	private static final float SCALE = 0.03f;
 	private static final float[] TRANSLATE_MAIN = { 0f, -25f };
 
+	// Bezier array.
 	private final Vector<KittyBezier> mBeziers = new Vector<KittyBezier>();
 
+	/**
+	 * Default constructor.
+	 */
 	public KittyObject() {
 		long t = genBgHeart(100);
 		t = genBgHead(t);
