@@ -2,7 +2,6 @@ package fi.harism.wallpaper.hellokitty;
 
 import android.opengl.GLSurfaceView;
 import android.service.wallpaper.WallpaperService;
-import android.service.wallpaper.WallpaperService.Engine;
 import android.view.SurfaceHolder;
 
 public class KittyService extends WallpaperService {
@@ -27,19 +26,21 @@ public class KittyService extends WallpaperService {
 
 			super.onCreate(surfaceHolder);
 			mWallpaperSurfaceView = new WallpaperSurfaceView();
-			
+
 			mWallpaperSurfaceView.setEGLContextClientVersion(2);
-			mWallpaperSurfaceView.setRenderer(new KittyRenderer(mWallpaperSurfaceView));
-			mWallpaperSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+			mWallpaperSurfaceView.setRenderer(new KittyRenderer(
+					mWallpaperSurfaceView));
+			mWallpaperSurfaceView
+					.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 		}
-		
+
 		@Override
 		public final void onDestroy() {
 			super.onDestroy();
 			mWallpaperSurfaceView.onDestroy();
 			mWallpaperSurfaceView = null;
 		}
-		
+
 		@Override
 		public final void onVisibilityChanged(boolean visible) {
 			super.onVisibilityChanged(visible);
@@ -50,7 +51,7 @@ public class KittyService extends WallpaperService {
 				mWallpaperSurfaceView.onPause();
 			}
 		}
-		
+
 		/**
 		 * Lazy as I am, I din't bother using GLWallpaperService (found on
 		 * GitHub) project for wrapping OpenGL functionality into my wallpaper
@@ -63,12 +64,12 @@ public class KittyService extends WallpaperService {
 			public WallpaperSurfaceView() {
 				super(KittyService.this);
 			}
-			
+
 			@Override
 			public final SurfaceHolder getHolder() {
 				return WallpaperEngine.this.getSurfaceHolder();
 			}
-			
+
 			/**
 			 * Should be called once underlying Engine is destroyed. Calling
 			 * onDetachedFromWindow() will stop rendering thread which is lost
@@ -76,7 +77,7 @@ public class KittyService extends WallpaperService {
 			 */
 			public final void onDestroy() {
 				super.onDetachedFromWindow();
-			}		
+			}
 		}
 	}
 }

@@ -17,18 +17,19 @@ import android.widget.Toast;
 
 public class KittyRenderer implements GLSurfaceView.Renderer {
 
+	private static final int SPLINE_VERTEX_COUNT = 20;
 	private final float mAspectRatio[] = new float[2];
 	private long mBezierTimeStart = -1, mBezierTimeCurrent = -1;
 	private ByteBuffer mBufferScreen;
 	private FloatBuffer mBufferSpline;
+	private GLSurfaceView mGLSurfaceView;
 	private final KittyFbo mKittyFbo = new KittyFbo();
 	private final KittyObject mObject = new KittyObject();
 	private final KittyShader mShaderBezier = new KittyShader();
+	private final boolean[] mShaderCompilerSupport = new boolean[1];
 	private final KittyShader mShaderCopy = new KittyShader();
 	private int mWidth, mHeight;
-	private static final int SPLINE_VERTEX_COUNT = 20;
-	private GLSurfaceView mGLSurfaceView;
-	
+
 	public KittyRenderer(GLSurfaceView glSurfaceView) {
 		mGLSurfaceView = glSurfaceView;
 
@@ -40,17 +41,18 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		mBufferSpline = buf.order(ByteOrder.nativeOrder()).asFloatBuffer();
 		for (int i = 0; i < SPLINE_VERTEX_COUNT; ++i) {
 			float t = (float) i / (SPLINE_VERTEX_COUNT - 1);
-			mBufferSpline.put(t).put(0);
-			mBufferSpline.put(t).put(4);
+			mBufferSpline.put(t).put(-1);
+			mBufferSpline.put(t).put(1);
 		}
 		mBufferSpline.position(0);
 	}
-	
+
 	/**
 	 * Loads String from raw resources with given id.
 	 */
 	private String loadRawString(int rawId) throws Exception {
-		InputStream is = mGLSurfaceView.getContext().getResources().openRawResource(rawId);
+		InputStream is = mGLSurfaceView.getContext().getResources()
+				.openRawResource(rawId);
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte[] buf = new byte[1024];
 		int len;
@@ -63,6 +65,14 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	@Override
 	public void onDrawFrame(GL10 unused) {
 
+		if (mShaderCompilerSupport[0] == false) {
+			GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+			GLES20.glViewport(0, 0, mWidth, mHeight);
+			GLES20.glClearColor(.2f, .5f, .8f, 1f);
+			GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+			return;
+		}
+
 		GLES20.glDisable(GLES20.GL_BLEND);
 		GLES20.glDisable(GLES20.GL_DEPTH_TEST);
 		GLES20.glDisable(GLES20.GL_CULL_FACE);
@@ -71,9 +81,6 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 
 		GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
 		GLES20.glViewport(0, 0, mWidth, mHeight);
-
-		GLES20.glClearColor(.2f, .5f, .8f, 1f);
-		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
 		mShaderCopy.useProgram();
 		int aPosition = mShaderCopy.getHandle("aPosition");
@@ -89,15 +96,27 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		mWidth = width;
 		mHeight = height;
 
-		mAspectRatio[0] = (float) Math.min(width, height) / width;
-		mAspectRatio[1] = (float) Math.min(width, height) / height;
+		mAspectRatio[0] = (float) Math.min(mWidth, mHeight) / mWidth;
+		mAspectRatio[1] = (float) Math.min(mWidth, mHeight) / mHeight;
 
-		mKittyFbo.init(width, height, 1);
+		mKittyFbo.init(mWidth, mHeight, 1);
 		mBezierTimeStart = mBezierTimeCurrent = -1;
 	}
 
 	@Override
 	public void onSurfaceCreated(GL10 unused, EGLConfig config) {
+		// Check if shader compiler is supported.
+		GLES20.glGetBooleanv(GLES20.GL_SHADER_COMPILER, mShaderCompilerSupport,
+				0);
+
+		// If not, show user an error message and return immediately.
+		if (mShaderCompilerSupport[0] == false) {
+			String msg = mGLSurfaceView.getContext().getString(
+					R.string.error_shader_compiler);
+			showError(msg);
+			return;
+		}
+
 		try {
 			String vertexSource, fragmentSource;
 			vertexSource = loadRawString(R.raw.copy_vs);
@@ -112,7 +131,6 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	}
 
 	private void renderBezier(KittyBezier bezier, float tStart, float tEnd) {
-
 		int sz = bezier.mCtrlPts0.length;
 		final float[] ctrlPts = new float[16];
 		for (int i = 0; i < sz; i += 2) {
@@ -157,8 +175,13 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 				mBufferSpline);
 		GLES20.glEnableVertexAttribArray(aSplinePos);
 
+		GLES20.glEnable(GLES20.GL_BLEND);
+		GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
 				2 * SPLINE_VERTEX_COUNT);
+
+		GLES20.glDisable(GLES20.GL_BLEND);
 	}
 
 	private void renderKitty() {
@@ -204,12 +227,13 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	 * Shows Toast on screen with given message.
 	 */
 	private void showError(final String errorMsg) {
-		Handler handler = new Handler(mGLSurfaceView.getContext().getMainLooper());
+		Handler handler = new Handler(mGLSurfaceView.getContext()
+				.getMainLooper());
 		handler.post(new Runnable() {
 			@Override
 			public void run() {
-				Toast.makeText(mGLSurfaceView.getContext(), errorMsg, Toast.LENGTH_LONG)
-						.show();
+				Toast.makeText(mGLSurfaceView.getContext(), errorMsg,
+						Toast.LENGTH_LONG).show();
 			}
 		});
 	}

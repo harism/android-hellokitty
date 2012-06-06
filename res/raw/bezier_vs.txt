@@ -11,7 +11,7 @@ void main() {
 	float t = clamp(aSplinePos.x, uInterpolatorLimits.x, uInterpolatorLimits.y);
 	
 	vec2 pos;
-	int idx = aSplinePos.y == 0.0 ? 0 : 4;
+	int idx = aSplinePos.y < 0.0 ? 0 : 4;
 	
 	if (uControlPtsCount == 3) {
 		vec2 q0 = mix(uControlPts[idx + 0], uControlPts[idx + 1], t);
