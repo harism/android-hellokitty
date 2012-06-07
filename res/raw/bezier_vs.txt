@@ -3,7 +3,6 @@ uniform vec2 uAspectRatio;
 uniform vec2 uInterpolatorLimits;
 uniform int uControlPtsCount;
 uniform vec2 uControlPts[8];
-uniform vec2 uWidth;
 attribute vec2 aSplinePos;
 varying vec2 vLineCoord;
 

@@ -16,22 +16,26 @@
 
 package fi.harism.wallpaper.hellokitty;
 
-/**
- * Container class for bezier fills.
- */
-public class KittyBezier {
-	// Bezier control points top.
-	public float[] mCtrlPts0;
-	// Bezier control points bottom.
-	public float[] mCtrlPts1;
-	// Bezier draw start time.
-	public long mTimeStart, mTimeDuration;
+import java.util.Vector;
 
-	/**
-	 * Default constructor.
-	 */
-	KittyBezier(long timeStart, long timeDuration) {
-		mTimeStart = timeStart;
-		mTimeDuration = timeDuration;
+public class KittyLayer {
+
+	// Beziers array.
+	public final Vector<KittyBezier> mBeziers = new Vector<KittyBezier>();
+	// Bezier color.
+	public float[] mColor;
+	// Layer name.
+	public String mName;
+	// Control point scale.
+	public float mScale;
+	// Control point translate.
+	public float[] mTranslate;
+
+	public KittyLayer(String name, float[] color, float[] translate, float scale) {
+		mName = name;
+		mColor = color;
+		mTranslate = translate;
+		mScale = scale;
 	}
+
 }
