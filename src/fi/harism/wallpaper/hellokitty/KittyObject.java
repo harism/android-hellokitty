@@ -49,7 +49,7 @@ public class KittyObject {
 
 	// Modifier constants.
 	private static final float SCALE = 0.03f;
-	private static final float[] TRANSLATE_MAIN = { 0f, -25f, 0, 0 };
+	private static final float[] TRANSLATE_MAIN = { 0f, -.6f };
 
 	// Bezier layers array.
 	private final Vector<KittyLayer> mLayers = new Vector<KittyLayer>();
@@ -71,7 +71,7 @@ public class KittyObject {
 
 	private long genBgBow(long t) {
 		KittyLayer layer = new KittyLayer(LAYER_BG_BOW, COLOR_PINK,
-				TRANSLATE_MAIN.clone(), SCALE);
+				TRANSLATE_MAIN, SCALE);
 		mLayers.add(layer);
 		KittyBezier b;
 
@@ -127,7 +127,7 @@ public class KittyObject {
 		layer.mBeziers.add(b);
 
 		// Skull.
-		b = new KittyBezier(t += 200, 200);
+		b = new KittyBezier(t += 150, 150);
 		b.mCtrlPts0 = new float[] { 0, 44, -4, 44, -12, 42 };
 		b.mCtrlPts1 = new float[] { 0, 44, 4, 44, 12, 42 };
 		layer.mBeziers.add(b);
@@ -157,11 +157,11 @@ public class KittyObject {
 		mLayers.add(layer);
 		KittyBezier b;
 
-		b = new KittyBezier(t += 500, 500);
+		b = new KittyBezier(t += 100, 700);
 		b.mCtrlPts0 = new float[] { -36, 41, -20, 64, 0, 43 };
 		b.mCtrlPts1 = new float[] { -36, 41, -52, 18, 0, -7 };
 		layer.mBeziers.add(b);
-		b = new KittyBezier(t += 500, 500);
+		b = new KittyBezier(t += 700, 700);
 		b.mCtrlPts0 = new float[] { 0, 43, 20, 64, 36, 41 };
 		b.mCtrlPts1 = new float[] { 0, -7, 52, 18, 36, 41 };
 		layer.mBeziers.add(b);
@@ -171,7 +171,7 @@ public class KittyObject {
 
 	private long genBow(long t) {
 		KittyLayer layer = new KittyLayer(LAYER_FG_BOW, COLOR_GRAY,
-				TRANSLATE_MAIN.clone(), SCALE);
+				TRANSLATE_MAIN, SCALE);
 		mLayers.add(layer);
 		KittyBezier b;
 
@@ -222,7 +222,7 @@ public class KittyObject {
 		layer.mBeziers.add(b);
 
 		// Knot left..
-		b = new KittyBezier(t += 200, 200);
+		b = new KittyBezier(t += 400, 200);
 		b.mCtrlPts0 = new float[] { 11, 36, 9, 37, 9, 39 };
 		b.mCtrlPts1 = new float[] { 11, 35, 8, 36, 8, 40 };
 		layer.mBeziers.add(b);
@@ -232,7 +232,7 @@ public class KittyObject {
 		layer.mBeziers.add(b);
 
 		// Knot right..
-		b = new KittyBezier(t += 200, 200);
+		b = new KittyBezier(t += 400, 200);
 		b.mCtrlPts0 = new float[] { 18, 36, 22, 35, 21, 33 };
 		b.mCtrlPts1 = new float[] { 18, 37, 23, 36, 22, 34 };
 		layer.mBeziers.add(b);
@@ -412,8 +412,8 @@ public class KittyObject {
 		KittyBezier b;
 
 		// Left bg...
-		layer = new KittyLayer(LAYER_BG_PAW_LEFT, COLOR_WHITE,
-				TRANSLATE_MAIN.clone(), SCALE);
+		layer = new KittyLayer(LAYER_BG_PAW_LEFT, COLOR_WHITE, TRANSLATE_MAIN,
+				SCALE);
 		mLayers.add(layer);
 		b = new KittyBezier(t += 700, 200);
 		b.mCtrlPts0 = new float[] { -20, 10, -18, 12, -15, 13, -11, 11 };
@@ -429,8 +429,8 @@ public class KittyObject {
 		layer.mBeziers.add(b);
 
 		// Left fg...
-		layer = new KittyLayer(LAYER_FG_PAW_LEFT, COLOR_GRAY,
-				TRANSLATE_MAIN.clone(), SCALE);
+		layer = new KittyLayer(LAYER_FG_PAW_LEFT, COLOR_GRAY, TRANSLATE_MAIN,
+				SCALE);
 		mLayers.add(layer);
 		b = new KittyBezier(t += 700, 200);
 		b.mCtrlPts0 = new float[] { -14, 2, -18, 2, -20, 4 };
@@ -458,8 +458,8 @@ public class KittyObject {
 		layer.mBeziers.add(b);
 
 		// Right bg...
-		layer = new KittyLayer(LAYER_BG_PAW_RIGHT, COLOR_WHITE,
-				TRANSLATE_MAIN.clone(), SCALE);
+		layer = new KittyLayer(LAYER_BG_PAW_RIGHT, COLOR_WHITE, TRANSLATE_MAIN,
+				SCALE);
 		mLayers.add(layer);
 		b = new KittyBezier(t += 700, 200);
 		b.mCtrlPts0 = new float[] { 20, 10, 18, 12, 15, 13, 11, 11 };
@@ -475,8 +475,8 @@ public class KittyObject {
 		layer.mBeziers.add(b);
 
 		// Right fg...
-		layer = new KittyLayer(LAYER_FG_PAW_RIGHT, COLOR_GRAY,
-				TRANSLATE_MAIN.clone(), SCALE);
+		layer = new KittyLayer(LAYER_FG_PAW_RIGHT, COLOR_GRAY, TRANSLATE_MAIN,
+				SCALE);
 		mLayers.add(layer);
 		b = new KittyBezier(t += 700, 200);
 		b.mCtrlPts0 = new float[] { 14, 2, 18, 2, 20, 4 };
