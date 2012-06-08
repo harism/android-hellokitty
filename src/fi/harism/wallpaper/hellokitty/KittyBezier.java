@@ -19,7 +19,7 @@ package fi.harism.wallpaper.hellokitty;
 /**
  * Container class for bezier fills.
  */
-public class KittyBezier {
+public final class KittyBezier {
 	// Bezier control points top.
 	public float[] mCtrlPts0;
 	// Bezier control points bottom.

@@ -1,29 +1,20 @@
 
 uniform vec2 uAspectRatio;
 uniform vec2 uLimitsT;
-uniform int uControlPtsCount;
 uniform vec2 uControlPts[8];
 attribute vec2 aBezierPos;
 varying vec2 vLineCoord;
 
 void main() {
-	float t = clamp(aBezierPos.x, uLimitsT.x, uLimitsT.y);
-	
-	vec2 pos;
+	float t = clamp(aBezierPos.x, uLimitsT.x, uLimitsT.y);	
 	int idx = aBezierPos.y < 0.0 ? 0 : 4;
 	
-	if (uControlPtsCount == 3) {
-		vec2 q0 = mix(uControlPts[idx + 0], uControlPts[idx + 1], t);
-		vec2 q1 = mix(uControlPts[idx + 1], uControlPts[idx + 2], t);
-		pos = mix(q0, q1, t);
-	} else if (uControlPtsCount == 4) {
-		vec2 q0 = mix(uControlPts[idx + 0], uControlPts[idx + 1], t);
-		vec2 q1 = mix(uControlPts[idx + 1], uControlPts[idx + 2], t);
-		vec2 q2 = mix(uControlPts[idx + 2], uControlPts[idx + 3], t);
-		vec2 r0 = mix(q0, q1, t);
-		vec2 r1 = mix(q1, q2, t);
-		pos = mix(r0, r1, t);
-	}
+	vec2 q0 = mix(uControlPts[idx + 0], uControlPts[idx + 1], t);
+	vec2 q1 = mix(uControlPts[idx + 1], uControlPts[idx + 2], t);
+	vec2 q2 = mix(uControlPts[idx + 2], uControlPts[idx + 3], t);
+	vec2 r0 = mix(q0, q1, t);
+	vec2 r1 = mix(q1, q2, t);
+	vec2 pos = mix(r0, r1, t);
 	
 	gl_Position = vec4(pos * uAspectRatio, 0.0, 1.0);
 	vLineCoord = aBezierPos;

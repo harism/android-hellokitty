@@ -18,7 +18,7 @@ package fi.harism.wallpaper.hellokitty;
 
 import java.util.Vector;
 
-public class KittyLayer {
+public final class KittyLayer {
 
 	// Beziers array.
 	public final Vector<KittyBezier> mBeziers = new Vector<KittyBezier>();

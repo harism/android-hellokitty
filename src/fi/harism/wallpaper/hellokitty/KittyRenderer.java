@@ -36,7 +36,7 @@ import android.widget.Toast;
 /**
  * Renderer class.
  */
-public class KittyRenderer implements GLSurfaceView.Renderer {
+public final class KittyRenderer implements GLSurfaceView.Renderer {
 
 	// Bezier curve split count.
 	private static final int BEZIER_VERTEX_COUNT = 20;
@@ -63,7 +63,7 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	// Owner surface view.
 	private GLSurfaceView mGLSurfaceView;
 	private final KittyFbo mKittyFbo = new KittyFbo();
-	private final KittyObject mKittyObject = new KittyObject();
+	private final KittySvg mKittySvg = new KittySvg();
 	// Move animation variables.
 	private float mMoveDx, mMoveDy;
 	// Shader variables.
@@ -101,6 +101,16 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		for (int i = 0; i < 10; ++i) {
 			KittyBezier bezier = new KittyBezier(0, 0);
 			mClearLayer.mBeziers.add(bezier);
+		}
+
+		// Load kitty svg..
+		try {
+			InputStream is = mGLSurfaceView.getContext().getResources()
+					.openRawResource(R.raw.kitty_svg);
+			mKittySvg.read(is);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			showError(ex.getMessage());
 		}
 	}
 
@@ -257,9 +267,8 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 	 */
 	private void renderBezier(KittyBezier bezier, float tStart, float tEnd,
 			float[] color, float[] translate, float scale) {
-		int sz = bezier.mCtrlPts0.length;
 		final float[] ctrlPts = new float[16];
-		for (int i = 0; i < sz; i += 2) {
+		for (int i = 0; i < 8; i += 2) {
 			float x1 = bezier.mCtrlPts0[i];
 			float y1 = bezier.mCtrlPts0[i + 1];
 			ctrlPts[i] = x1 * scale + translate[0];
@@ -274,14 +283,12 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		mShaderBezier.useProgram();
 		int uAspectRatio = mShaderBezier.getHandle("uAspectRatio");
 		int uLimitsT = mShaderBezier.getHandle("uLimitsT");
-		int uControlPtsCount = mShaderBezier.getHandle("uControlPtsCount");
 		int uControlPts = mShaderBezier.getHandle("uControlPts");
 		int uColor = mShaderBezier.getHandle("uColor");
 		int aBezierPos = mShaderBezier.getHandle("aBezierPos");
 
 		GLES20.glUniform2fv(uAspectRatio, 1, mAspectRatio, 0);
 		GLES20.glUniform2f(uLimitsT, tStart, tEnd);
-		GLES20.glUniform1i(uControlPtsCount, sz / 2);
 		GLES20.glUniform2fv(uControlPts, 16, ctrlPts, 0);
 		GLES20.glUniform3fv(uColor, 1, color, 0);
 
@@ -308,15 +315,15 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		final String[] layerNames = new String[4];
 		switch (mState) {
 		case STATE_BLINK_EYE_BOTH:
-			layerNames[0] = KittyObject.LAYER_BG_EYE_LEFT;
-			layerNames[1] = KittyObject.LAYER_FG_EYE_LEFT;
+			layerNames[0] = "bg_eye_left";
+			layerNames[1] = "fg_eye_left";
 		case STATE_BLINK_EYE_RIGHT:
-			layerNames[2] = KittyObject.LAYER_BG_EYE_RIGHT;
-			layerNames[3] = KittyObject.LAYER_FG_EYE_RIGHT;
+			layerNames[2] = "bg_eye_right";
+			layerNames[3] = "fg_eye_right";
 			break;
 		case STATE_BLINK_EYE_LEFT:
-			layerNames[0] = KittyObject.LAYER_BG_EYE_LEFT;
-			layerNames[1] = KittyObject.LAYER_FG_EYE_LEFT;
+			layerNames[0] = "bg_eye_left";
+			layerNames[1] = "fg_eye_left";
 			break;
 		}
 
@@ -324,7 +331,7 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 			if (layerNames[i] == null) {
 				continue;
 			}
-			KittyLayer layer = mKittyObject.getLayer(layerNames[i]);
+			KittyLayer layer = mKittySvg.getLayer(layerNames[i]);
 			for (KittyBezier bezier : layer.mBeziers) {
 				renderBezier(bezier, i % 2 == 0 ? tStart : 2 - tEnd,
 						i % 2 == 0 ? tEnd : 2 - tStart, layer.mColor,
@@ -381,7 +388,7 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		}
 
 		boolean requestRender = false;
-		for (KittyLayer layer : mKittyObject.getLayers()) {
+		for (KittyLayer layer : mKittySvg.getLayers()) {
 			for (KittyBezier bezier : layer.mBeziers) {
 				long diffLast = mTimeLast - mTimeStart;
 				long diffCurrent = timeCurrent - mTimeStart;
@@ -428,23 +435,23 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		String layerFgName = null;
 		switch (mState) {
 		case STATE_MOVE_BOW:
-			layerBgName = KittyObject.LAYER_BG_BOW;
-			layerFgName = KittyObject.LAYER_FG_BOW;
+			layerBgName = "bg_bow";
+			layerFgName = "fg_bow";
 			break;
 		case STATE_MOVE_PAW_LEFT:
-			layerBgName = KittyObject.LAYER_BG_PAW_LEFT;
-			layerFgName = KittyObject.LAYER_FG_PAW_LEFT;
+			layerBgName = "bg_paw_left";
+			layerFgName = "fg_paw_left";
 			break;
 		case STATE_MOVE_PAW_RIGHT:
-			layerBgName = KittyObject.LAYER_BG_PAW_RIGHT;
-			layerFgName = KittyObject.LAYER_FG_PAW_RIGHT;
+			layerBgName = "bg_paw_right";
+			layerFgName = "fg_paw_right";
 			break;
 		}
 
 		GLES20.glClearColor(COLOR_BG[0], COLOR_BG[1], COLOR_BG[2], 1f);
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
 
-		for (KittyLayer layer : mKittyObject.getLayers()) {
+		for (KittyLayer layer : mKittySvg.getLayers()) {
 			if (layer.mName.equals(layerBgName)
 					|| layer.mName.equals(layerFgName)) {
 				continue;
@@ -463,13 +470,13 @@ public class KittyRenderer implements GLSurfaceView.Renderer {
 		float t = (float) Math.sin(diffCurrent * Math.PI / 720);
 		t *= 1f - (diffCurrent / 2880f);
 		final float[] translate = { 0, 0 };
-		KittyLayer layer = mKittyObject.getLayer(layerBgName);
+		KittyLayer layer = mKittySvg.getLayer(layerBgName);
 		translate[0] = layer.mTranslate[0] + t * mMoveDx;
 		translate[1] = layer.mTranslate[1] + t * mMoveDy;
 		for (KittyBezier bezier : layer.mBeziers) {
 			renderBezier(bezier, 0, 1, layer.mColor, translate, layer.mScale);
 		}
-		layer = mKittyObject.getLayer(layerFgName);
+		layer = mKittySvg.getLayer(layerFgName);
 		translate[0] = layer.mTranslate[0] + t * mMoveDx;
 		translate[1] = layer.mTranslate[1] + t * mMoveDy;
 		for (KittyBezier bezier : layer.mBeziers) {

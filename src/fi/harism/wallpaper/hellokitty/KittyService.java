@@ -20,7 +20,7 @@ import android.opengl.GLSurfaceView;
 import android.service.wallpaper.WallpaperService;
 import android.view.SurfaceHolder;
 
-public class KittyService extends WallpaperService {
+public final class KittyService extends WallpaperService {
 
 	@Override
 	public Engine onCreateEngine() {
