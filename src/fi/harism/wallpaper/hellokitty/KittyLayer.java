@@ -22,8 +22,6 @@ public final class KittyLayer {
 
 	// Beziers array.
 	public final Vector<KittyBezier> mBeziers = new Vector<KittyBezier>();
-	// Bezier color.
-	public float[] mColor;
 	// Layer name.
 	public String mName;
 	// Control point scale.
@@ -31,11 +29,14 @@ public final class KittyLayer {
 	// Control point translate.
 	public float[] mTranslate;
 
-	public KittyLayer(String name, float[] color, float[] translate, float scale) {
+	public KittyLayer(String name, float[] translate, float scale) {
 		mName = name;
-		mColor = color;
 		mTranslate = translate;
 		mScale = scale;
+	}
+
+	public void add(KittyBezier bezier) {
+		mBeziers.add(bezier);
 	}
 
 }

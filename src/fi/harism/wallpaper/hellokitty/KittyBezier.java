@@ -20,6 +20,8 @@ package fi.harism.wallpaper.hellokitty;
  * Container class for bezier fills.
  */
 public final class KittyBezier {
+	// Bezier color.
+	public float[] mColor;
 	// Bezier control points top.
 	public float[] mCtrlPts0;
 	// Bezier control points bottom.
@@ -30,7 +32,8 @@ public final class KittyBezier {
 	/**
 	 * Default constructor.
 	 */
-	KittyBezier(long timeStart, long timeDuration) {
+	KittyBezier(float[] color, long timeStart, long timeDuration) {
+		mColor = color;
 		mTimeStart = timeStart;
 		mTimeDuration = timeDuration;
 	}
