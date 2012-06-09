@@ -26,6 +26,7 @@ import java.util.Vector;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import android.graphics.Matrix;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Handler;
@@ -57,8 +58,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	private FloatBuffer mBufferBezier;
 	private ByteBuffer mBufferScreen;
 	// Clear layer.
-	private KittyLayer mClearLayer = new KittyLayer("clear",
-			new float[] { 0, 0 }, 1);
+	private KittyLayer mClearLayer = new KittyLayer("clear", new Matrix());
 	private final Handler mDelayedHandler = new Handler(Looper.getMainLooper());
 	// Owner surface view.
 	private GLSurfaceView mGLSurfaceView;
@@ -277,21 +277,15 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	 * Renders bezier onto current buffer. tStart and tEnd are values between
 	 * [0, 1].
 	 */
-	private void renderBezier(KittyBezier bezier, float[] translate,
-			float scale, float tStart, float tEnd) {
+	private void renderBezier(KittyBezier bezier, Matrix transform,
+			float tStart, float tEnd) {
 
 		final float[] ctrlPts = new float[16];
-		for (int i = 0; i < 8; i += 2) {
-			float x1 = bezier.mCtrlPts0[i];
-			float y1 = bezier.mCtrlPts0[i + 1];
-			ctrlPts[i] = x1 * scale + translate[0];
-			ctrlPts[i + 1] = y1 * scale + translate[1];
-
-			float x2 = bezier.mCtrlPts1[i];
-			float y2 = bezier.mCtrlPts1[i + 1];
-			ctrlPts[i + 8] = x2 * scale + translate[0];
-			ctrlPts[i + 9] = y2 * scale + translate[1];
+		for (int i = 0; i < 8; ++i) {
+			ctrlPts[i] = bezier.mPts0[i];
+			ctrlPts[i + 8] = bezier.mPts1[i];
 		}
+		transform.mapPoints(ctrlPts);
 
 		mShaderBezier.useProgram();
 		int uAspectRatio = mShaderBezier.getHandle("uAspectRatio");
@@ -332,9 +326,8 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 		for (int i = 0; i < layerIds.length; ++i) {
 			KittyLayer layer = mKittySvg.getLayer(layerIds[i]);
 			for (KittyBezier bezier : layer.mBeziers) {
-				renderBezier(bezier, layer.mTranslate, layer.mScale,
-						i % 2 == 0 ? tStart : 2 - tEnd, i % 2 == 0 ? tEnd
-								: 2 - tStart);
+				renderBezier(bezier, layer.mTransform, i % 2 == 0 ? tStart
+						: 2 - tEnd, i % 2 == 0 ? tEnd : 2 - tStart);
 			}
 		}
 
@@ -348,25 +341,38 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	private boolean renderClear() {
 		long timeCurrent = SystemClock.uptimeMillis();
 		if (mTimeLast < 0) {
-			for (KittyBezier bezier : mClearLayer.mBeziers) {
+			for (int i = 0; i < mClearLayer.mBeziers.size(); ++i) {
+				KittyBezier bezier = mClearLayer.mBeziers.get(i);
+
 				float x = (float) (Math.random() * 2 - 1);
 				float y = (float) (Math.random() * 2 - 1);
-				bezier.mCtrlPts0 = new float[] { x, y - 1, x - 1.5f, y - 1.0f,
-						x - 1.5f, y + 1.0f, x, y + 1 };
-				bezier.mCtrlPts1 = new float[] { x, y - 1, x + 1.5f, y - 1.0f,
-						x + 1.5f, y + 1.0f, x, y + 1 };
+				float dx = 4f / (mClearLayer.mBeziers.size() - i);
+				float dy = 3f / (mClearLayer.mBeziers.size() - i);
+
+				bezier.mPts0 = new float[] { x, y - dy, x - dx, y - dy, x - dx,
+						y + dy, x, y + dy };
+				bezier.mPts1 = new float[] { x, y - dy, x + dx, y - dy, x + dx,
+						y + dy, x, y + dy };
+
 			}
 			mTimeStart = mTimeLast = timeCurrent;
 		}
 
 		long diffCurrent = timeCurrent - mTimeStart;
-		float scale = diffCurrent / 3000f;
+		float scale = diffCurrent / 5000f;
+		scale *= scale * (3 - 2 * scale);
+
 		for (KittyBezier bezier : mClearLayer.mBeziers) {
-			renderBezier(bezier, mClearLayer.mTranslate, scale * 3, 0f, 1f);
+			float dx = bezier.mPts0[0];
+			float dy = bezier.mPts0[1] + 1;
+			mClearLayer.mTransform.setTranslate(-dx, -dy);
+			mClearLayer.mTransform.postScale(scale, scale);
+			mClearLayer.mTransform.postTranslate(dx, dy);
+			renderBezier(bezier, mClearLayer.mTransform, 0f, 1f);
 		}
 
 		mTimeLast = timeCurrent;
-		if (diffCurrent >= 3000) {
+		if (diffCurrent >= 4000) {
 			mTimeLast = mTimeStart = -1;
 			mStateArray.clear();
 		}
@@ -392,7 +398,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 				long diffEnd = bezier.mTimeStart + bezier.mTimeDuration;
 
 				if (diffLast <= bezier.mTimeStart && diffCurrent >= diffEnd) {
-					renderBezier(bezier, layer.mTranslate, layer.mScale, 0f, 1f);
+					renderBezier(bezier, layer.mTransform, 0f, 1f);
 				} else if ((diffLast >= bezier.mTimeStart && diffLast <= diffEnd)
 						|| (diffCurrent >= bezier.mTimeStart && diffCurrent <= diffEnd)) {
 					float tStart = (float) (diffLast - bezier.mTimeStart)
@@ -400,8 +406,8 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 					float tEnd = (float) (diffCurrent - bezier.mTimeStart)
 							/ bezier.mTimeDuration;
 
-					renderBezier(bezier, layer.mTranslate, layer.mScale,
-							tStart >= 0 ? tStart : 0, tEnd <= 1 ? tEnd : 1);
+					renderBezier(bezier, layer.mTransform, tStart >= 0 ? tStart
+							: 0, tEnd <= 1 ? tEnd : 1);
 				}
 
 				if (diffEnd > diffCurrent) {
@@ -424,18 +430,6 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 			mTimeLast = (long) (Math.random() * 1440 - 720);
 		}
 
-		GLES20.glClearColor(COLOR_BG[0], COLOR_BG[1], COLOR_BG[2], 1f);
-		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
-
-		for (KittyLayer layer : mKittySvg.getLayers()) {
-			if (layer.mName.equals(layerId)) {
-				continue;
-			}
-			for (KittyBezier bezier : layer.mBeziers) {
-				renderBezier(bezier, layer.mTranslate, layer.mScale, 0, 1);
-			}
-		}
-
 		long diffCurrent = timeCurrent - mTimeStart;
 		if (diffCurrent > 2880) {
 			diffCurrent = 2880;
@@ -451,12 +445,21 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 			dy = tmp;
 		}
 
-		KittyLayer layer = mKittySvg.getLayer(layerId);
-		final float[] translate = { 0, 0 };
-		translate[0] = layer.mTranslate[0] + t * dx;
-		translate[1] = layer.mTranslate[1] + t * dy;
-		for (KittyBezier bezier : layer.mBeziers) {
-			renderBezier(bezier, translate, layer.mScale, 0, 1);
+		KittyLayer layerMove = mKittySvg.getLayer(layerId);
+		Matrix transform = new Matrix(layerMove.mTransform);
+		transform.postTranslate(t * dx, t * dy);
+
+		GLES20.glClearColor(COLOR_BG[0], COLOR_BG[1], COLOR_BG[2], 1f);
+		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+		for (KittyLayer layer : mKittySvg.getLayers()) {
+			for (KittyBezier bezier : layer.mBeziers) {
+				if (layer == layerMove) {
+					renderBezier(bezier, transform, 0, 1);
+				} else {
+					renderBezier(bezier, layer.mTransform, 0, 1);
+				}
+			}
 		}
 
 		return diffCurrent < 2880;

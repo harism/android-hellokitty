@@ -18,21 +18,20 @@ package fi.harism.wallpaper.hellokitty;
 
 import java.util.Vector;
 
+import android.graphics.Matrix;
+
 public final class KittyLayer {
 
 	// Beziers array.
 	public final Vector<KittyBezier> mBeziers = new Vector<KittyBezier>();
 	// Layer name.
-	public String mName;
-	// Control point scale.
-	public float mScale;
-	// Control point translate.
-	public float[] mTranslate;
+	public String mId;
+	// Transformation matrix.
+	public final Matrix mTransform = new Matrix();
 
-	public KittyLayer(String name, float[] translate, float scale) {
-		mName = name;
-		mTranslate = translate;
-		mScale = scale;
+	public KittyLayer(String id, Matrix transform) {
+		mId = id;
+		mTransform.set(transform);
 	}
 
 	public void add(KittyBezier bezier) {

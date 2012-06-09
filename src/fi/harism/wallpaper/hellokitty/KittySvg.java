@@ -26,6 +26,7 @@ import org.xml.sax.AttributeList;
 import org.xml.sax.HandlerBase;
 
 import android.graphics.Color;
+import android.graphics.Matrix;
 
 public final class KittySvg extends HandlerBase {
 
@@ -76,35 +77,11 @@ public final class KittySvg extends HandlerBase {
 	}
 
 	/**
-	 * Pre-compute translate and scale values into bezier.
-	 */
-	private void calculateScaleAndTranslate(KittyBezier bezier,
-			float[] translate, float scale) {
-		for (int i = 0; i < 8; ++i) {
-			bezier.mCtrlPts0[i] += translate[i % 2];
-			bezier.mCtrlPts0[i] *= scale;
-			bezier.mCtrlPts1[i] += translate[i % 2];
-			bezier.mCtrlPts1[i] *= scale;
-		}
-	}
-
-	@Override
-	public void endElement(String name) {
-		if (name.equals("layer")) {
-			// Translate and scaling is done into beziers already.
-			mLayerCurrent.mTranslate[0] = 0;
-			mLayerCurrent.mTranslate[1] = 0;
-			mLayerCurrent.mScale = 1;
-			mLayers.add(mLayerCurrent);
-		}
-	}
-
-	/**
 	 * Returns layer with given id, or null if not found.
 	 */
 	public KittyLayer getLayer(String id) {
 		for (KittyLayer layer : mLayers) {
-			if (layer.mName.equals(id)) {
+			if (layer.mId.equals(id)) {
 				return layer;
 			}
 		}
@@ -154,12 +131,16 @@ public final class KittySvg extends HandlerBase {
 	public void startElement(String name, AttributeList attrs) {
 		// New layer.
 		if (name.equals("layer")) {
-			Vector<Float> t = readValues(attrs.getValue("translate"));
-
 			String id = attrs.getValue("id");
-			float dt[] = { t.get(0), t.get(1) };
+			Vector<Float> t = readValues(attrs.getValue("translate"));
 			float s = Float.parseFloat(attrs.getValue("scale"));
-			mLayerCurrent = new KittyLayer(id, dt, s);
+
+			final Matrix transform = new Matrix();
+			transform.setTranslate(t.get(0), t.get(1));
+			transform.postScale(s, s);
+
+			mLayerCurrent = new KittyLayer(id, transform);
+			mLayers.add(mLayerCurrent);
 		}
 		// New fill element.
 		if (name.equals("fill")) {
@@ -170,17 +151,15 @@ public final class KittySvg extends HandlerBase {
 			int count = (Math.min(pts1.size(), pts2.size()) - 2) / 6;
 			for (int i = 0; i < count; ++i) {
 				KittyBezier bezier = allocBezier(attrs, i);
-				bezier.mCtrlPts0 = new float[8];
-				bezier.mCtrlPts1 = new float[8];
+				bezier.mPts0 = new float[8];
+				bezier.mPts1 = new float[8];
 
 				for (int j = 0; j < 8; ++j) {
 					int idx = i * 6 + j;
-					bezier.mCtrlPts0[j] = pts1.get(idx);
-					bezier.mCtrlPts1[j] = pts2.get(idx);
+					bezier.mPts0[j] = pts1.get(idx);
+					bezier.mPts1[j] = pts2.get(idx);
 				}
 
-				calculateScaleAndTranslate(bezier, mLayerCurrent.mTranslate,
-						mLayerCurrent.mScale);
 				mLayerCurrent.add(bezier);
 			}
 		}
@@ -194,8 +173,8 @@ public final class KittySvg extends HandlerBase {
 			for (int i = 0; i < count; ++i) {
 				KittyBezier bezier = allocBezier(attrs, i);
 
-				float[] pts0 = bezier.mCtrlPts0 = new float[8];
-				float[] pts1 = bezier.mCtrlPts1 = new float[8];
+				float[] pts0 = bezier.mPts0 = new float[8];
+				float[] pts1 = bezier.mPts1 = new float[8];
 
 				for (int j = 0; j < 8; ++j) {
 					int idx = i * 6 + j;
@@ -223,19 +202,15 @@ public final class KittySvg extends HandlerBase {
 							* scale.get(scaleIdx + 2);
 				}
 
-				// Scale and translate bezier into [-1, 1] space.
-				calculateScaleAndTranslate(bezier, mLayerCurrent.mTranslate,
-						mLayerCurrent.mScale);
-
 				// If this isn't first bezier, connect control points at the end
 				// of last one and first one of this one.
 				if (i > 0) {
 					KittyBezier prevBezier = mLayerCurrent.mBeziers
 							.get(mLayerCurrent.mBeziers.size() - 1);
-					pts0[0] = prevBezier.mCtrlPts0[6];
-					pts0[1] = prevBezier.mCtrlPts0[7];
-					pts1[0] = prevBezier.mCtrlPts1[6];
-					pts1[1] = prevBezier.mCtrlPts1[7];
+					pts0[0] = prevBezier.mPts0[6];
+					pts0[1] = prevBezier.mPts0[7];
+					pts1[0] = prevBezier.mPts1[6];
+					pts1[1] = prevBezier.mPts1[7];
 				}
 
 				mLayerCurrent.add(bezier);

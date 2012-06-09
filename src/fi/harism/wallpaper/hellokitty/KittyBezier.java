@@ -23,10 +23,10 @@ public final class KittyBezier {
 	// Bezier color.
 	public float[] mColor;
 	// Bezier control points top.
-	public float[] mCtrlPts0;
+	public float[] mPts0;
 	// Bezier control points bottom.
-	public float[] mCtrlPts1;
-	// Bezier draw start time.
+	public float[] mPts1;
+	// Bezier draw start time and duration.
 	public long mTimeStart, mTimeDuration;
 
 	/**
