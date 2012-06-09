@@ -32,6 +32,22 @@ public final class KittySvg extends HandlerBase {
 	private KittyLayer mLayerCurrent;
 	private Vector<KittyLayer> mLayers = new Vector<KittyLayer>();
 
+	private KittyBezier allocBezier(AttributeList attrs, int idx) {
+		// Read start and end time.
+		Vector<Float> t = readValues(attrs.getValue("time"));
+		long tStart = Math.round(t.get(idx * 2 + 0));
+		long tDuration = Math.round(t.get(idx * 2 + 1));
+
+		int color = Color.parseColor(attrs.getValue("color"));
+		float colorArr[] = new float[3];
+		colorArr[0] = Color.red(color) / 255f;
+		colorArr[1] = Color.green(color) / 255f;
+		colorArr[2] = Color.blue(color) / 255f;
+
+		KittyBezier bezier = new KittyBezier(colorArr, tStart, tDuration);
+		return bezier;
+	}
+
 	/**
 	 * Calculates normal at given t.
 	 */
@@ -114,28 +130,23 @@ public final class KittySvg extends HandlerBase {
 	/**
 	 * Reads values from given String of format "xx,yy,.. xx,yy,.. xx,yy,..".
 	 */
-	private float[] readValues(String d, int values, int count) {
-		float[] ret = new float[values * count];
-		// We read count number of elements.
-		for (int i = 0; i < count; ++i) {
-			// Each element contains values number of values.
-			for (int j = 0; j < values; ++j) {
-				int splitIdx = d.indexOf(',');
-				if (j == values - 1) {
-					splitIdx = d.indexOf(' ');
-					splitIdx = splitIdx == -1 ? d.length() : splitIdx;
-				}
-
-				ret[i * values + j] = Float
-						.parseFloat(d.substring(0, splitIdx));
-
-				if (splitIdx < d.length())
-					++splitIdx;
-				d = d.substring(splitIdx);
+	private Vector<Float> readValues(String d) {
+		Vector<Float> ret = new Vector<Float>();
+		while (true) {
+			int splitIdx = d.indexOf(',');
+			int splitIdx2 = d.indexOf(' ');
+			if (splitIdx == -1 || (splitIdx2 > 0 && splitIdx2 < splitIdx)) {
+				splitIdx = splitIdx2;
 			}
-			d = d.trim();
+			if (splitIdx == -1) {
+				break;
+			}
+			ret.add(Float.parseFloat(d.substring(0, splitIdx)));
+			d = d.substring(splitIdx + 1).trim();
 		}
-
+		if (d.length() > 0) {
+			ret.add(Float.parseFloat(d));
+		}
 		return ret;
 	}
 
@@ -143,72 +154,93 @@ public final class KittySvg extends HandlerBase {
 	public void startElement(String name, AttributeList attrs) {
 		// New layer.
 		if (name.equals("layer")) {
+			Vector<Float> t = readValues(attrs.getValue("translate"));
+
 			String id = attrs.getValue("id");
-			float[] translate = readValues(attrs.getValue("translate"), 2, 1);
-			float scale = Float.parseFloat(attrs.getValue("scale"));
-			mLayerCurrent = new KittyLayer(id, translate, scale);
+			float dt[] = { t.get(0), t.get(1) };
+			float s = Float.parseFloat(attrs.getValue("scale"));
+			mLayerCurrent = new KittyLayer(id, dt, s);
 		}
 		// New fill element.
 		if (name.equals("fill")) {
-			float[] time = readValues(attrs.getValue("time"), 1, 2);
 
-			int color = Color.parseColor(attrs.getValue("color"));
-			float colorArr[] = new float[3];
-			colorArr[0] = Color.red(color) / 255f;
-			colorArr[1] = Color.green(color) / 255f;
-			colorArr[2] = Color.blue(color) / 255f;
+			Vector<Float> pts1 = readValues(attrs.getValue("pts1"));
+			Vector<Float> pts2 = readValues(attrs.getValue("pts2"));
 
-			KittyBezier bezier = new KittyBezier(colorArr, (long) time[0],
-					(long) time[1]);
+			int count = (Math.min(pts1.size(), pts2.size()) - 2) / 6;
+			for (int i = 0; i < count; ++i) {
+				KittyBezier bezier = allocBezier(attrs, i);
+				bezier.mCtrlPts0 = new float[8];
+				bezier.mCtrlPts1 = new float[8];
 
-			bezier.mCtrlPts0 = readValues(attrs.getValue("pts1"), 2, 4);
-			bezier.mCtrlPts1 = readValues(attrs.getValue("pts2"), 2, 4);
+				for (int j = 0; j < 8; ++j) {
+					int idx = i * 6 + j;
+					bezier.mCtrlPts0[j] = pts1.get(idx);
+					bezier.mCtrlPts1[j] = pts2.get(idx);
+				}
 
-			calculateScaleAndTranslate(bezier, mLayerCurrent.mTranslate,
-					mLayerCurrent.mScale);
-			mLayerCurrent.add(bezier);
+				calculateScaleAndTranslate(bezier, mLayerCurrent.mTranslate,
+						mLayerCurrent.mScale);
+				mLayerCurrent.add(bezier);
+			}
 		}
 		// New line element.
 		if (name.equals("line")) {
-			float[] time = readValues(attrs.getValue("time"), 1, 2);
-			float scale[] = readValues(attrs.getValue("scale"), 1, 4);
 
-			int color = Color.parseColor(attrs.getValue("color"));
-			float colorArr[] = new float[3];
-			colorArr[0] = Color.red(color) / 255f;
-			colorArr[1] = Color.green(color) / 255f;
-			colorArr[2] = Color.blue(color) / 255f;
+			Vector<Float> scale = readValues(attrs.getValue("scale"));
+			Vector<Float> pts = readValues(attrs.getValue("pts"));
 
-			KittyBezier bezier = new KittyBezier(colorArr, (long) time[0],
-					(long) time[1]);
+			int count = (pts.size() - 2) / 6;
+			for (int i = 0; i < count; ++i) {
+				KittyBezier bezier = allocBezier(attrs, i);
 
-			bezier.mCtrlPts0 = readValues(attrs.getValue("pts"), 2, 4);
-			bezier.mCtrlPts1 = new float[8];
+				float[] pts0 = bezier.mCtrlPts0 = new float[8];
+				float[] pts1 = bezier.mCtrlPts1 = new float[8];
 
-			float[] normal0 = calculateNormal(bezier.mCtrlPts0, 0);
-			float[] normal1 = calculateNormal(bezier.mCtrlPts0, 1);
+				for (int j = 0; j < 8; ++j) {
+					int idx = i * 6 + j;
+					pts0[j] = pts.get(idx);
+					pts1[j] = pts.get(idx);
+				}
 
-			for (int i = 0; i < 4; ++i) {
-				float diff = normal0[i % 2] * scale[0] / 2;
-				bezier.mCtrlPts1[i] = bezier.mCtrlPts0[i] + diff;
-				bezier.mCtrlPts0[i] -= diff;
+				float[] normal0 = calculateNormal(pts0, 0);
+				float[] normal1 = calculateNormal(pts0, 1);
 
-				diff = normal1[i % 2] * scale[3] / 2;
-				bezier.mCtrlPts1[i + 4] = bezier.mCtrlPts0[i + 4] + diff;
-				bezier.mCtrlPts0[i + 4] -= diff;
+				int scaleIdx = i * 4;
+				for (int j = 0; j < 4; ++j) {
+					float diff = normal0[j % 2] * scale.get(scaleIdx + 0) / 2;
+					pts0[j] -= diff;
+					pts1[j] += diff;
+
+					diff = normal1[j % 2] * scale.get(scaleIdx + 3) / 2;
+					pts0[j + 4] -= diff;
+					pts1[j + 4] += diff;
+				}
+				for (int j = 0; j < 2; ++j) {
+					pts1[j + 2] += (pts1[j + 2] - pts1[j + 0])
+							* scale.get(scaleIdx + 1);
+					pts1[j + 4] += (pts0[j + 4] - pts1[j + 6])
+							* scale.get(scaleIdx + 2);
+				}
+
+				// Scale and translate bezier into [-1, 1] space.
+				calculateScaleAndTranslate(bezier, mLayerCurrent.mTranslate,
+						mLayerCurrent.mScale);
+
+				// If this isn't first bezier, connect control points at the end
+				// of last one and first one of this one.
+				if (i > 0) {
+					KittyBezier prevBezier = mLayerCurrent.mBeziers
+							.get(mLayerCurrent.mBeziers.size() - 1);
+					pts0[0] = prevBezier.mCtrlPts0[6];
+					pts0[1] = prevBezier.mCtrlPts0[7];
+					pts1[0] = prevBezier.mCtrlPts1[6];
+					pts1[1] = prevBezier.mCtrlPts1[7];
+				}
+
+				mLayerCurrent.add(bezier);
 			}
-			for (int i = 0; i < 2; ++i) {
-				float diff = (bezier.mCtrlPts1[i + 2] - bezier.mCtrlPts1[i + 0])
-						* scale[1];
-				bezier.mCtrlPts1[i + 2] += diff;
-				diff = (bezier.mCtrlPts0[i + 4] - bezier.mCtrlPts1[i + 6])
-						* scale[2];
-				bezier.mCtrlPts1[i + 4] += diff;
-			}
 
-			calculateScaleAndTranslate(bezier, mLayerCurrent.mTranslate,
-					mLayerCurrent.mScale);
-			mLayerCurrent.add(bezier);
 		}
 	}
 }
