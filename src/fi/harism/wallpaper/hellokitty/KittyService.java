@@ -32,6 +32,7 @@ public final class KittyService extends WallpaperService {
 	 */
 	private final class WallpaperEngine extends Engine {
 
+		private KittyRenderer mRenderer;
 		private WallpaperSurfaceView mWallpaperSurfaceView;
 
 		@Override
@@ -42,10 +43,9 @@ public final class KittyService extends WallpaperService {
 
 			super.onCreate(surfaceHolder);
 			mWallpaperSurfaceView = new WallpaperSurfaceView();
-
+			mRenderer = new KittyRenderer(mWallpaperSurfaceView);
 			mWallpaperSurfaceView.setEGLContextClientVersion(2);
-			mWallpaperSurfaceView.setRenderer(new KittyRenderer(
-					mWallpaperSurfaceView));
+			mWallpaperSurfaceView.setRenderer(mRenderer);
 			mWallpaperSurfaceView
 					.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 		}
@@ -53,6 +53,7 @@ public final class KittyService extends WallpaperService {
 		@Override
 		public final void onDestroy() {
 			super.onDestroy();
+			mRenderer.stopHandler();
 			mWallpaperSurfaceView.onDestroy();
 			mWallpaperSurfaceView = null;
 		}
@@ -65,6 +66,7 @@ public final class KittyService extends WallpaperService {
 				mWallpaperSurfaceView.requestRender();
 			} else {
 				mWallpaperSurfaceView.onPause();
+				mRenderer.stopHandler();
 			}
 		}
 

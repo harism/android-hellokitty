@@ -351,7 +351,6 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 
 		long diffCurrent = timeCurrent - mTimeStart;
 		float scale = diffCurrent / 3000f;
-		// scale = scale * scale * (3 - 2 * scale);
 		for (KittyBezier bezier : mClearLayer.mBeziers) {
 			renderBezier(bezier, mClearLayer.mTranslate, scale * 3, 0f, 1f);
 		}
@@ -406,6 +405,9 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 		return requestRender;
 	}
 
+	/**
+	 * Renders layer movement animation.
+	 */
 	private boolean renderMoveLayer(String layerId) {
 		long timeCurrent = SystemClock.uptimeMillis();
 		if (mTimeStart < 0) {
@@ -462,6 +464,13 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 						Toast.LENGTH_LONG).show();
 			}
 		});
+	}
+
+	/**
+	 * Removes callbacks from Handler.
+	 */
+	public void stopHandler() {
+		mDelayedHandler.removeCallbacks(mDelayedRunnable);
 	}
 
 }
