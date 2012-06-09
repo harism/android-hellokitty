@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.util.Vector;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -35,7 +36,7 @@ import android.widget.Toast;
 /**
  * Renderer class.
  */
-public final class KittyRenderer implements GLSurfaceView.Renderer {
+public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 
 	// Bezier curve split count.
 	private static final int BEZIER_VERTEX_COUNT = 20;
@@ -49,8 +50,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 	private static final int STATE_MOVE_BOW = 4;
 	private static final int STATE_MOVE_PAW_LEFT = 5;
 	private static final int STATE_MOVE_PAW_RIGHT = 6;
-	private static final int STATE_NONE = 7;
-	private static final int STATE_RENDERKITTY = 100;
+	private static final int STATE_RENDERKITTY = 7;
 	// View aspect ratio.
 	private final float mAspectRatio[] = new float[2];
 	// Vertex buffers.
@@ -60,7 +60,6 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 	private KittyLayer mClearLayer = new KittyLayer("clear",
 			new float[] { 0, 0 }, 1);
 	private final Handler mDelayedHandler = new Handler(Looper.getMainLooper());
-	private Runnable mDelayedRunnable;
 	// Owner surface view.
 	private GLSurfaceView mGLSurfaceView;
 	private final KittyFbo mKittyFbo = new KittyFbo();
@@ -69,7 +68,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 	private final KittyShader mShaderBezier = new KittyShader();
 	private final boolean[] mShaderCompilerSupport = new boolean[1];
 	private final KittyShader mShaderCopy = new KittyShader();
-	private int mState;
+	private final Vector<Integer> mStateArray = new Vector<Integer>();
 	private long mTimeStart, mTimeLast = -1;
 	// View width and height.
 	private int mWidth, mHeight;
@@ -110,38 +109,37 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 			ex.printStackTrace();
 			showError(ex.getMessage());
 		}
+	}
 
-		// Random event Runnable for delayed scheduling.
-		mDelayedRunnable = new Runnable() {
-			@Override
-			public void run() {
-				mTimeLast = -1;
-				mTimeStart = -1;
-
-				double rand = Math.random();
-				if (rand < 0.45) {
-					rand = Math.random();
-					if (rand < 0.4)
-						mState = STATE_BLINK_EYE_LEFT;
-					else if (rand < 0.8)
-						mState = STATE_BLINK_EYE_RIGHT;
-					else
-						mState = STATE_BLINK_EYE_BOTH;
-				} else if (rand < 0.9) {
-					rand = Math.random();
-					if (rand < 0.333)
-						mState = STATE_MOVE_PAW_LEFT;
-					else if (rand < 0.667)
-						mState = STATE_MOVE_PAW_RIGHT;
-					else
-						mState = STATE_MOVE_BOW;
-				} else {
-					mState = STATE_CLEAR;
-				}
-
-				mGLSurfaceView.requestRender();
+	/**
+	 * Generates new random state array list.
+	 */
+	public void genNewStateArray() {
+		// First render kitty.
+		mStateArray.add(STATE_RENDERKITTY);
+		// Add N random events. TODO:
+		for (int i = 0; i < 2; ++i) {
+			double rand = Math.random();
+			if (rand < 0.5) {
+				rand = Math.random();
+				if (rand < 0.4)
+					mStateArray.add(STATE_BLINK_EYE_LEFT);
+				else if (rand < 0.8)
+					mStateArray.add(STATE_BLINK_EYE_RIGHT);
+				else
+					mStateArray.add(STATE_BLINK_EYE_BOTH);
+			} else {
+				rand = Math.random();
+				if (rand < 0.333)
+					mStateArray.add(STATE_MOVE_PAW_LEFT);
+				else if (rand < 0.667)
+					mStateArray.add(STATE_MOVE_PAW_RIGHT);
+				else
+					mStateArray.add(STATE_MOVE_BOW);
 			}
-		};
+		}
+		// Finally clear kitty for redrawing.
+		mStateArray.add(STATE_CLEAR);
 	}
 
 	/**
@@ -179,8 +177,12 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 		// Render to FBO.
 		mKittyFbo.bind();
 		mKittyFbo.bindTexture(0);
+
 		boolean requestRender = false;
-		switch (mState) {
+		if (mStateArray.size() == 0) {
+			genNewStateArray();
+		}
+		switch (mStateArray.get(0)) {
 		case STATE_RENDERKITTY:
 			requestRender = renderKitty();
 			break;
@@ -207,11 +209,14 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 			requestRender = renderClear();
 			break;
 		}
+
+		// If request render, call for new render iteration.
 		if (requestRender) {
 			mGLSurfaceView.requestRender();
-		} else {
-			mState = STATE_NONE;
-			mDelayedHandler.postDelayed(mDelayedRunnable, 5000);
+		}
+		// Otherwise post delayed render request.
+		else {
+			mDelayedHandler.postDelayed(this, 5000);
 		}
 
 		// Bind screen buffer.
@@ -236,7 +241,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 
 		mKittyFbo.init(mWidth, mHeight, 1);
 		mTimeStart = mTimeLast = -1;
-		mState = STATE_RENDERKITTY;
+		mStateArray.clear();
 	}
 
 	@Override
@@ -269,8 +274,8 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 	}
 
 	/**
-	 * Renders bezier fill onto current buffer. tStart and tEnd are values
-	 * between [0, 1].
+	 * Renders bezier onto current buffer. tStart and tEnd are values between
+	 * [0, 1].
 	 */
 	private void renderBezier(KittyBezier bezier, float[] translate,
 			float scale, float tStart, float tEnd) {
@@ -286,7 +291,6 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 			float y2 = bezier.mCtrlPts1[i + 1];
 			ctrlPts[i + 8] = x2 * scale + translate[0];
 			ctrlPts[i + 9] = y2 * scale + translate[1];
-
 		}
 
 		mShaderBezier.useProgram();
@@ -310,6 +314,9 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 
 	}
 
+	/**
+	 * Handles eye blink animation.
+	 */
 	private boolean renderBlinkEye(String... layerIds) {
 		long timeCurrent = SystemClock.uptimeMillis();
 		if (mTimeLast < 0) {
@@ -335,6 +342,9 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 		return diffCurrent < 1000;
 	}
 
+	/**
+	 * Handles clearing current buffer.
+	 */
 	private boolean renderClear() {
 		long timeCurrent = SystemClock.uptimeMillis();
 		if (mTimeLast < 0) {
@@ -358,14 +368,13 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 		mTimeLast = timeCurrent;
 		if (diffCurrent >= 3000) {
 			mTimeLast = mTimeStart = -1;
-			mState = STATE_RENDERKITTY;
+			mStateArray.clear();
 		}
-
 		return true;
 	}
 
 	/**
-	 * 
+	 * Handles procedural kitty rendering.
 	 */
 	private boolean renderKitty() {
 		long timeCurrent = SystemClock.uptimeMillis();
@@ -433,7 +442,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 		}
 
 		float t = (float) Math.sin(diffCurrent * Math.PI / 2880);
-		t = t * t * t * (3 - 2 * t) * 0.05f;
+		t = t * t * t * (3 - 2 * t) * 0.08f;
 		float dx = (float) Math.sin((diffCurrent + mTimeLast) * Math.PI / 720);
 		float dy = (float) Math.cos((diffCurrent + mTimeLast) * Math.PI / 720);
 		if (mTimeLast < 0) {
@@ -453,6 +462,16 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 		return diffCurrent < 2880;
 	}
 
+	@Override
+	public void run() {
+		mTimeLast = -1;
+		mTimeStart = -1;
+		if (mStateArray.size() > 0) {
+			mStateArray.remove(0);
+		}
+		mGLSurfaceView.requestRender();
+	}
+
 	/**
 	 * Shows Toast on screen with given message.
 	 */
@@ -470,7 +489,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer {
 	 * Removes callbacks from Handler.
 	 */
 	public void stopHandler() {
-		mDelayedHandler.removeCallbacks(mDelayedRunnable);
+		mDelayedHandler.removeCallbacks(this);
 	}
 
 }
