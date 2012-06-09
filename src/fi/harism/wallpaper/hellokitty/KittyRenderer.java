@@ -117,8 +117,8 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	public void genNewStateArray() {
 		// First render kitty.
 		mStateArray.add(STATE_RENDERKITTY);
-		// Add N random events. TODO:
-		for (int i = 0; i < 2; ++i) {
+		// Add N random events.
+		for (int i = 0; i < 20; ++i) {
 			double rand = Math.random();
 			if (rand < 0.5) {
 				rand = Math.random();
