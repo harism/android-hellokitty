@@ -52,6 +52,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	private static final int STATE_MOVE_PAW_LEFT = 5;
 	private static final int STATE_MOVE_PAW_RIGHT = 6;
 	private static final int STATE_RENDERKITTY = 7;
+	
 	// View aspect ratio.
 	private final float mAspectRatio[] = new float[2];
 	// Vertex buffers.
@@ -69,6 +70,8 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	private final boolean[] mShaderCompilerSupport = new boolean[1];
 	private final KittyShader mShaderCopy = new KittyShader();
 	private final Vector<Integer> mStateArray = new Vector<Integer>();
+	private final float[] mTempBezier = new float[16];
+	private final Matrix mTempMatrix = new Matrix();
 	private long mTimeStart, mTimeLast = -1;
 	// View width and height.
 	private int mWidth, mHeight;
@@ -280,12 +283,11 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	private void renderBezier(KittyBezier bezier, Matrix transform,
 			float tStart, float tEnd) {
 
-		final float[] ctrlPts = new float[16];
 		for (int i = 0; i < 8; ++i) {
-			ctrlPts[i] = bezier.mPts0[i];
-			ctrlPts[i + 8] = bezier.mPts1[i];
+			mTempBezier[i] = bezier.mPts0[i];
+			mTempBezier[i + 8] = bezier.mPts1[i];
 		}
-		transform.mapPoints(ctrlPts);
+		transform.mapPoints(mTempBezier);
 
 		mShaderBezier.useProgram();
 		int uAspectRatio = mShaderBezier.getHandle("uAspectRatio");
@@ -296,7 +298,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 
 		GLES20.glUniform2fv(uAspectRatio, 1, mAspectRatio, 0);
 		GLES20.glUniform2f(uLimitsT, tStart, tEnd);
-		GLES20.glUniform2fv(uControlPts, 8, ctrlPts, 0);
+		GLES20.glUniform2fv(uControlPts, 8, mTempBezier, 0);
 		GLES20.glUniform3fv(uColor, 1, bezier.mColor, 0);
 
 		GLES20.glVertexAttribPointer(aBezierPos, 2, GLES20.GL_FLOAT, false, 0,
@@ -305,7 +307,6 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 
 		GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0,
 				2 * BEZIER_VERTEX_COUNT);
-
 	}
 
 	/**
@@ -446,8 +447,8 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 		}
 
 		KittyLayer layerMove = mKittySvg.getLayer(layerId);
-		Matrix transform = new Matrix(layerMove.mTransform);
-		transform.postTranslate(t * dx, t * dy);
+		mTempMatrix.set(layerMove.mTransform);
+		mTempMatrix.postTranslate(t * dx, t * dy);
 
 		GLES20.glClearColor(COLOR_BG[0], COLOR_BG[1], COLOR_BG[2], 1f);
 		GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -455,7 +456,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 		for (KittyLayer layer : mKittySvg.getLayers()) {
 			for (KittyBezier bezier : layer.mBeziers) {
 				if (layer == layerMove) {
-					renderBezier(bezier, transform, 0, 1);
+					renderBezier(bezier, mTempMatrix, 0, 1);
 				} else {
 					renderBezier(bezier, layer.mTransform, 0, 1);
 				}
