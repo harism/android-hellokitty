@@ -52,7 +52,7 @@ public final class KittyRenderer implements GLSurfaceView.Renderer, Runnable {
 	private static final int STATE_MOVE_PAW_LEFT = 5;
 	private static final int STATE_MOVE_PAW_RIGHT = 6;
 	private static final int STATE_RENDERKITTY = 7;
-	
+
 	// View aspect ratio.
 	private final float mAspectRatio[] = new float[2];
 	// Vertex buffers.

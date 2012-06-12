@@ -52,8 +52,8 @@ public final class KittySvg extends HandlerBase {
 	/**
 	 * Calculates normal at given t.
 	 */
-	private float[] calculateNormal(float[] bezier, float t) {
-		float ret[] = new float[2];
+	private void calculateNormal(float[] bezier, float t, float[] ret,
+			int retIdx) {
 		// Calculate x -coordinate.
 		float xq0 = bezier[0] + (bezier[2] - bezier[0]) * t;
 		float xq1 = bezier[2] + (bezier[4] - bezier[2]) * t;
@@ -67,13 +67,13 @@ public final class KittySvg extends HandlerBase {
 		float yr0 = yq0 + (yq1 - yq0) * t;
 		float yr1 = yq1 + (yq2 - yq1) * t;
 		// Normal direction.
-		ret[0] = yr0 - yr1;
-		ret[1] = xr1 - xr0;
+		float nx = yr0 - yr1;
+		float ny = xr1 - xr0;
 		// Normalize length.
-		float len = (float) Math.sqrt(ret[0] * ret[0] + ret[1] * ret[1]);
-		ret[0] /= len;
-		ret[1] /= len;
-		return ret;
+		float len = (float) Math.sqrt(nx * nx + ny * ny);
+		// Store normal values.
+		ret[retIdx + 0] = nx / len;
+		ret[retIdx + 1] = ny / len;
 	}
 
 	/**
@@ -166,7 +166,7 @@ public final class KittySvg extends HandlerBase {
 		// New line element.
 		if (name.equals("line")) {
 
-			Vector<Float> scale = readValues(attrs.getValue("scale"));
+			Vector<Float> width = readValues(attrs.getValue("width"));
 			Vector<Float> pts = readValues(attrs.getValue("pts"));
 
 			int count = (pts.size() - 2) / 6;
@@ -182,24 +182,19 @@ public final class KittySvg extends HandlerBase {
 					pts1[j] = pts.get(idx);
 				}
 
-				float[] normal0 = calculateNormal(pts0, 0);
-				float[] normal1 = calculateNormal(pts0, 1);
+				// Calculate normals at end points and control points.
+				float[] normals = new float[8];
+				calculateNormal(pts0, 0 / 3f, normals, 0);
+				calculateNormal(pts0, 1 / 3f, normals, 2);
+				calculateNormal(pts0, 2 / 3f, normals, 4);
+				calculateNormal(pts0, 3 / 3f, normals, 6);
 
-				int scaleIdx = i * 4;
-				for (int j = 0; j < 4; ++j) {
-					float diff = normal0[j % 2] * scale.get(scaleIdx + 0) / 2;
+				// Adjust control points with width and normal.
+				int scaleIdx = i * 3;
+				for (int j = 0; j < 8; ++j) {
+					float diff = normals[j] * width.get(scaleIdx + j / 2) / 2;
 					pts0[j] -= diff;
 					pts1[j] += diff;
-
-					diff = normal1[j % 2] * scale.get(scaleIdx + 3) / 2;
-					pts0[j + 4] -= diff;
-					pts1[j + 4] += diff;
-				}
-				for (int j = 0; j < 2; ++j) {
-					pts1[j + 2] += (pts1[j + 2] - pts1[j + 0])
-							* scale.get(scaleIdx + 1);
-					pts1[j + 4] += (pts0[j + 4] - pts1[j + 6])
-							* scale.get(scaleIdx + 2);
 				}
 
 				// If this isn't first bezier, connect control points at the end
